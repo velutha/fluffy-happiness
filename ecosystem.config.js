@@ -9,6 +9,8 @@ module.exports = {
     {
       name      : "samChat",
       script    : "bin/www",
+      instances : "max",
+      exec_mode : "cluster",
       env: {
         PORT: 8080
       },

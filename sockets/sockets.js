@@ -89,7 +89,7 @@ module.exports = function(io) {
                 writeToRedis.hincrbyAsync('numberOfChats',room,-1)
                 .then(function(res) {
                   console.log('numberOfChats reduced on disconnect');
-                  io.to(agentSocketID).emit('consumer_offline', userData);
+                  io.to(agentSocketID).emit('customer_offline', userData);
                 }).catch(function(err) {
                   console.log('Error reducing numberOfChats for',room);
                   return;
