@@ -23,7 +23,7 @@ var agent = {
       readFromRedis.smembersAsync('rooms')
       .then(function(rooms){
         console.log('Rooms',rooms);
-        var agentName = 'agent' + (rooms.length);
+        var agentName = 'Sam';
         socket.agentName= agentName;
         // write to roomDetails.room key
         var roomDetails = ['roomDetails.'+room, 'socketID', socket.id, 'agentName', agentName];
