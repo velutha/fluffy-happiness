@@ -91,11 +91,7 @@ var agent = {
 
   'stopTyping': function(io,socket,data) {
     io.to(data.socketID).emit('stop_typing');
-  },
-
-  //'disconnect': function(data) {
-
-  //}
+  }
 
 };
 
