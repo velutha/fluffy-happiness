@@ -9,7 +9,7 @@ module.exports = {
     {
       name      : "samChat",
       script    : "bin/www",
-      instances : 2,
+      //instances : 2,
       //exec_mode : "cluster",
       env: {
         PORT: 8080
