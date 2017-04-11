@@ -10,62 +10,22 @@ var readFromRedis = redis.createClient(redisPort,redisHost);
 var agent = {
 
   'newUser': function(io,socket) {
-    //console.log('Socket id is',socket.id);
     var room = randomstring.generate({
       length: 6,
       charset: 'alphabetic'
     }); 
-    // write to rooms
-    //rooms.push(room);
-    writeToRedis.saddAsync('rooms',room)
-    .then(function(res){
-      console.log('Room added',room);
-      readFromRedis.smembersAsync('rooms')
-      .then(function(rooms){
-        console.log('Rooms',rooms);
-        var agentName = 'Sam';
-        socket.agentName= agentName;
-        // write to roomDetails.room key
-        var roomDetails = ['roomDetails.'+room, 'socketID', socket.id, 'agentName', agentName];
-        writeToRedis.hmsetAsync(roomDetails)
-        .then(function(){
-          console.log('RoomDetails set',roomDetails);
-        }).catch(function(err){
-          console.log('Error setting roomDetails',err);
-          return;
-        });
-        //roomDetails[room] = {'socketID': socket.id, 'agentName': agentName};
-        // write to numberOfChats
-        writeToRedis.hmsetAsync('numberOfChats',room,0)
-        .then(function(res) {
-          console.log('numberOfChats set 0 for',room);
-        }).catch(function(err){
-          console.log('Error setting numberOfChats for',room,err);
-          return;
-        });
-        //numberOfChats[room] = 0;
-        socket.join(room);
-        // write to socketDetails.socket.id
-        //socketDetails[socket.id] = {
-          //room: room,
-          //userName: agentName 
-        //};
-        var socketDetails = ['socketDetails.'+socket.id, 'room', room, 'userName', agentName];
-        writeToRedis.hmsetAsync(socketDetails)
-        .then(function(res) {
-          console.log('socketDetails updated', socketDetails); 
-        }).catch(function(err) {
-          console.log('Error setting socketDetails',socketDetails,err);
-          return;
-        });
-      }).catch(function(err){
-        console.log('Error writing to rooms',err);
-        return;
-      });
-
-    }).catch(function(err){
-        console.log('Error writing to rooms',err);
-        return;
+    socket.join(room);
+    writeToRedis.hmsetAsync('numberOfChats',room,0)
+    .then(function() {
+      console.log('numberOfChats set 0 for',room);
+    }).catch(function(err) {
+      console.log('Error setting numberOfChats for',room,err);
+    });
+    writeToRedis.hmsetAsync(room,'id',socket.id)
+    .then(function() {
+      console.log('room key written',room,socket.id);
+    }).catch(function(err) {
+      console.log(err);
     });
 
   },
@@ -86,11 +46,79 @@ var agent = {
       agentName: socket.agentName
     };
     io.to(data.socketID).emit('agent_typing',newData);
-
   },
 
   'stopTyping': function(io,socket,data) {
     io.to(data.socketID).emit('stop_typing');
+  },
+
+  'removeUser': function(io,socket) {
+    var socketID = socket.id;
+    readFromRedis.hgetallAsync('socketDetails.'+socket.id)
+    .then(function(consumerSocketDetails) {
+      if (consumerSocketDetails) {
+        var room = consumerSocketDetails.room;
+        readFromRedis.hgetallAsync('roomDetails.'+room)
+        .then(function(agentSocketDetails) {
+          //var agentSocketDetails = roomDetails[room];
+          if (agentSocketDetails) {
+            var agentSocketID = agentSocketDetails.socketID;
+            if (agentSocketID === socketID) {
+              // write to roomDetails.room
+              //delete roomDetails[room];
+              writeToRedis.delAsync('roomDetails.'+room)
+              .then(function(res) {
+                io.to(room).emit('agent_offline', {agentName: agentSocketDetails.agentName});
+              }).catch(function(err) {
+                console.log('Error deleting roomDetails for',room);
+                return;
+              });
+              writeToRedis.sremAsync('rooms',room)
+              .then(function(res) {
+                console.log('Removed from rooms',room);
+              }).catch(function(err) {
+                console.log('Error removing from rooms for',room);
+                return;
+              });
+              // Also delete from numberOfChats
+              //var index = rooms.indexOf(room);
+              //if (index > -1) {
+                //rooms.splice(index,1);
+              //}
+            } else {
+              var userData = {
+                socketID: socketID,
+                userName: socket.userName
+              };
+              // write to numberOfChats
+              //numberOfChats[room]--;
+              writeToRedis.hincrbyAsync('numberOfChats',room,-1)
+              .then(function(res) {
+                console.log('numberOfChats reduced on disconnect');
+                io.to(agentSocketID).emit('customer_offline', userData);
+              }).catch(function(err) {
+                console.log('Error reducing numberOfChats for',room);
+                return;
+              });
+            }
+          }
+          // write to socketDetails.socket.id
+          //delete socketDetails[socket.id];
+          writeToRedis.delAsync('socketDetails.'+socket.id)
+          .then(function(res) {
+            console.log('socketDetails removed for',socket.id);
+          }).catch(function(err) {
+            console.log('Error deleting socketDetails for',socket.id);
+          });
+
+        }).catch(function(err) {
+          console.log('Error reading roomDetails in disconnect event for',room,err);
+          return;
+        });
+      }
+    }).catch(function(err) {
+      console.log('Error reading socketDetails in disconnect event',err);
+    });
   }
 
 };
