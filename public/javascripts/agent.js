@@ -1,5 +1,5 @@
 $(document).ready(function(){
-  var socket = io('');
+  var socket = io('/agent');
   var $currentInput = $('.inputMessage');
 
   socket.on('connect',function() {

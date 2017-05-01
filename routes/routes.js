@@ -5,7 +5,7 @@ router.get('/agent', function(req, res, next) {
   res.render('agent');
 });
 
-router.get('/', function(req, res, next) {
+router.get('/customer', function(req, res, next) {
   res.render('customer');
 });
 

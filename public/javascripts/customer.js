@@ -1,6 +1,6 @@
 $(document).ready(function(){
   var userName,tag;
-  var socket = io();
+  var socket = io('/customer');
   var $userNameInput = $('.userNameInput');
   var $currentInput = $userNameInput;
 

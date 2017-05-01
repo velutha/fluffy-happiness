@@ -121,7 +121,7 @@ var customer = {
     }
 
     function socketDetailsError(err) {
-      console.log('Error fetching socketDetails in consumer_message',socketDetails,err);
+      console.log('Error fetching socketDetails in consumer_message',err);
       return;
     }
 
@@ -148,7 +148,7 @@ var customer = {
     }
 
     function socketDetailsError(err) {
-      console.log('Error fetching socketDetails in consumer_typing',socketDetails,err);
+      console.log('Error fetching socketDetails in consumer_typing',err);
       return;
     }
 
@@ -178,6 +178,43 @@ var customer = {
       return;
     }
 
+  },
+
+  'removeUser': function(io,socket) {
+    readFromRedis.hgetallAsync('socketDetails.'+socket.id)
+    .then(function(consumerSocketDetails) {
+      if (consumerSocketDetails) {
+        var room = consumerSocketDetails.room;
+        readFromRedis.hgetallAsync('roomDetails.'+room)
+        .then(function(agentSocketDetails) {
+          var agentSocketID = agentSocketDetails.socketID;
+          var userData = {
+            socketID: socketID,
+            userName: socket.userName
+          };
+          writeToRedis.hincrbyAsync('numberOfChats',room,-1)
+          .then(function(res) {
+            console.log('numberOfChats reduced on disconnect');
+            io.to(agentSocketID).emit('customer_offline', userData);
+          }).catch(function(err) {
+            console.log('Error reducing numberOfChats for',room);
+            return;
+          });
+          writeToRedis.delAsync('socketDetails.'+socket.id)
+          .then(function(res) {
+            console.log('socketDetails removed for',socket.id);
+          }).catch(function(err) {
+            console.log('Error deleting socketDetails for',socket.id);
+          });
+
+        }).catch(function(err) {
+          console.log('Error reading roomDetails in disconnect event for',room,err);
+          return;
+        });
+      }
+    }).catch(function(err) {
+      console.log('Error reading socketDetails in disconnect event',err);
+    });
   }
 
 };

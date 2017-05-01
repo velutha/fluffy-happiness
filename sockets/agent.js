@@ -91,8 +91,42 @@ var agent = {
 
   'stopTyping': function(io,socket,data) {
     io.to(data.socketID).emit('stop_typing');
-  }
+  },
 
+  'removeUser': function(io,socket,data) {
+
+      readFromRedis.hgetallAsync('socketDetails.'+socket.id)
+      .then(function(socketDetails) {
+        var room = socketDetails.room;
+        readFromRedis.hgetallAsync('roomDetails.'+room)
+        .then(function(agentSocketDetails) {
+
+          var agentSocketID = agentSocketDetails.socketID;
+          writeToRedis.delAsync('roomDetails.'+room)
+          .then(function(res) {
+            io.to(room).emit('agent_offline', {agentName: agentSocketDetails.agentName});
+          }).catch(function(err) {
+            console.log('Error deleting roomDetails for',room);
+            return;
+          });
+          writeToRedis.sremAsync('rooms',room)
+          .then(function(res) {
+            console.log('Removed from rooms',room);
+          }).catch(function(err) {
+            console.log('Error removing from rooms for',room);
+            return;
+          });
+        });
+        writeToRedis.delAsync('socketDetails.'+socket.id)
+        .then(function(res) {
+          console.log('socketDetails removed for',socket.id);
+        }).catch(function(err) {
+          console.log('Error deleting socketDetails for',socket.id);
+        });
+
+      });
+
+  }
 };
 
 module.exports = agent;
