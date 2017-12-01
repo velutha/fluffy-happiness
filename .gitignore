@@ -27,6 +27,8 @@ build/Release
 # https://docs.npmjs.com/cli/shrinkwrap#caveats
 node_modules
 
+ecosystem.config.js
+
 # Debug log from npm
 npm-debug.log
 dump.rdb
